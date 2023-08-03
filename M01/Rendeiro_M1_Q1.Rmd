@@ -1,0 +1,465 @@
+---
+title: "Lista do Módulo 1"
+author: "Pedro Rendeiro"
+output:
+  pdf_document: default
+  html_document:
+    highlight: tango
+    includes:
+      after_body: psbfix.html
+---
+
+# Módulo 1
+
+## Exercício 1
+### Enunciado
+> **Item a)**
+>
+> Faça o tutorial sobre o package dplyr disponível no link. Baseado no tutorial que você fez e na base de dados starwars:
+>
+> - Proponha uma questão cuja solução empregue as seguintes funções: filter, slice, arrange, select, rename, mutate, relocate e summarise.<br>
+> - Desenvolva um programa em R que solucione a questão proposta.
+>
+>
+> **Item b)**
+>
+> Faça o tutorial sobre o package stringr disponível no link. Baseado no tutorial que você fez e na base de dados starwars:<br>
+>
+> - Proponha uma questão que use no mínimo cinco funções relacionadas à detecção de padrões em string (Pattern matching). Elabore um programa em R que forneça resposta à sua questão.<br>
+> - Proponha uma questão que use no mínimo cinco funções relacionadas à combinação de strings (Combining strings). Elabore um programa em R que forneça resposta à sua questão.
+
+### Resposta item a)
+#### Tutorial dplyr
+O pacote ```dplyr``` facilita três tipos de operações sobre bases de dados:
+
+1. Sobre linhas (ex: filter(), slice(), arrange())
+2. Sobre colunas (ex: select(), rename(), mutate(), relocate())
+3. Sobre grupos de linhas (ex: summarise())
+
+Em todos os casos, o nome da função é um verbo simples, que descreva bem o seu funcionamento. O primeiro argumento a ser passado é sempre um tibble. Contudo, para facilitar as operações, podemos utilizar o operador pipe (```x %>% f(y)``` em vez de ```f(x,y)```).
+
+Nas células abaixo, estão disponíveis exemplos do uso de funções de cada um desses tipos.
+
+**Operações sobre linhas**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+starwars %>%
+  filter(homeworld == "Tatooine", eye_color == "blue") %>%  # seleciona apenas as linhas cujas colunas 'homeworld' e 'eye_color' correspondem aos valores especificados
+  arrange(desc(mass)) %>%  # ordena da maior para a menor massa
+  slice(1:4) %>%  # mantém apenas os quatro personagens de maior massa
+  slice_sample(n=2)  # seleciona aleatoriamente duas amostras
+
+starwars %>%
+  filter(!is.na(height)) %>%  # seleciona as linhas cujo atributo "height" seja válido
+  slice_max(height, n=3)  # seleciona os três personagens mais altos
+```
+
+**Operações sobre colunas**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+starwars %>%
+  select(name:homeworld) %>%  # seleciona todas as colunas de 'name' até 'homeworld'
+  select(name, mass, gender, homeworld) %>%  # mantém apenas essas quatro colunas
+  select(!mass) %>%  # seleciona todas as colunas exceto a 'mass'
+  rename(planet = homeworld)  # renomeia a coluna 'homeworld' para 'planet'
+  
+starwars %>%
+  mutate(
+    height_m = height/100,  # cria coluna 'height' com altura em metros
+    imc = (mass / height_m^2),  # cria coluna 'imc' com o valor do índice de massa corporal
+    .keep = "used"  # mantém apenas colunas novas e aquelas utilizadas como base para criação das novas
+  ) %>%
+  relocate(mass:height_m, .before = height)  # posiciona as colunas entre 'mass' e 'height_m' antes da coluna 'height'
+```
+
+**Operações sobre grupos de linhas**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+starwars %>%
+  summarise(height = mean(height, na.rm = TRUE), mass = mean(mass, na.rm = TRUE))  # retorna um tibble única linha e, neste caso, duas colunas (média das alturas e das massas)
+
+# Obs.: a função summarize() torna-se mais útil quando a utilizamos em conjunto com a função group_by(), que será vista a seguir
+```
+
+Cinco das funções apresentadas nos exemplos acima sintetizam as cinco operações mais fundamentais que podem ser aplicadas sobre um conjunto de dados, as quais são:
+
+1. Reordenar linhas -> ```arrange()```
+2. Selecionar registros de interesse -> ```filter()```
+3. Selecionar atributos de interesse -> ```select()```
+4. Criar novos atributos -> ```mutate()```
+5. Sintetizar informações de diversos registros -> ```summarize()```
+
+As funções do pacote ```dplyr``` podem ser classificados segundo o tipo de operação que realizam, isto é, de acordo com sua semântica.
+
+1. Operações de seleção (```select()```) -> esperam receber nomes ou índices de colunas
+2. Operações de mutação (```mutate()``` e ```group_by()```) -> esperam receber vetores coluna | o tamanho do vetor deve ser 1 ou ```nrow(df)```
+
+#### Questão proposta
+> Utilizando o pacote **dplyr** e a base de dados **starwars**, calcule o IMC médio de humanos agrupado por planeta. Para o cálculo, devem ser selecionados aleatoriamente e sem repetição 80% dos humanos cujo planeta é conhecido. A resposta final deve ser um tibble cuja coluna correspondente aos planetas deve ter o nome "planet", e os registros devem estar ordenados alfabeticamente de acordo com os nomes dos planetas.
+
+**Programa**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+starwars %>%  # lê a base starwars
+  filter(species == "Human", !is.na(homeworld)) %>%  # mantém apenas os personagens humanos e cujo 'homeworld' é não nulo
+  slice_sample(prop=0.8) %>%  # seleciona, aleatoriamente e sem repetição, 80& dos exemplos
+  select(name,height,mass,homeworld) %>%  # seleciona apenas as colunas especificadas
+  mutate(
+    imc = mass / (height/100)^2,  # cria coluna de IMC
+    .keep = "unused"  # descarta as colunas referentes aos atributos utilizados na criação da coluna IMC
+  ) %>%
+  rename(planet = homeworld) %>%  # renomeia a coluna 'homeworld' para 'planet'
+  relocate(imc, .before = planet) %>%  # posiciona a coluna de IMC antes da coluna 'planet'
+  arrange(planet) %>%  # ordena de acordo com o nome do planeta em ordem alfabética
+  filter(!is.na(imc)) %>%  # descarta os registros cujo imc não é um número
+  group_by(planet) %>%  # agrupa o conjunto por planeta
+  summarise(
+    imc = mean(imc, na.rm = TRUE)  # calcula o imc médio de humanos por planeta
+  )
+```
+
+**Saída**
+```
+# A tibble: 11 × 2
+   planet         imc
+   <chr>        <dbl>
+ 1 Alderaan      22.1
+ 2 Bespin        25.8
+ 3 Concord Dawn  23.6
+ 4 Corellia      25.7
+ 5 Haruun Kal    23.8
+ 6 Kamino        23.4
+ 7 Naboo         20.7
+ 8 Serenno       21.5
+ 9 Socorro       25.2
+10 Stewjon       23.2
+11 Tatooine      27.2
+```
+
+
+
+### Resposta item b)
+#### Tutorial stringr
+O pacote **stringr** fornece funções que facilitam quatro tipos de operações com strings:
+
+1. Manipulação de caracteres (ex: str_sub)
+2. Manipulação de espaços vazios (ex: str_pad) 
+3. Operações sensíveis à localidade (ex: str_sort)
+4. Detecção de padrões (ex: expressões regulares)
+
+Nas células abaixo, estão disponíveis exemplos do uso de funções de cada um desses tipos.
+
+**Manipulação de caracteres**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+# Cria vetor de strings
+nome  <- c("Pedro", "Rendeiro")
+
+# Retorna tamanho de cada string
+str_length(nome)
+
+# Retorna um vetor de substrings (do 2º ao 5º caracter)
+str_sub(nome,2,5)
+
+# Substitui o 3º caracter de ambas as strings por 'X' 
+str_sub(nome,3,3) <- 'X'
+
+# Repete o primeiro e o segundo elementos do vetor 'nome' 3 e 5 vezes, respectivamente
+str_dup(nome, c(3,5))
+```
+
+**Manipulação de espaços vazios**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+nome <- c("Pedro", "Rendeiro")
+
+# Adiciona espaços em branco à direita da string até que o tamanho total da nova
+# string seja igual a 10
+str_pad(nome, 10, side = "right")
+
+# Adiciona "X" à direita e à esqueda da String até que o tamanho total da nova
+# string seja igual a 9.
+str_pad(nome, 9, side = "both", pad = "X")
+
+#str_trunc
+x <- c("Texto", "Texto bem maior")
+
+# Combinação 'trunc' + 'pad' -> garante que as Strings mantenham o mesmo tamanho
+x %>%
+  str_trunc(7) %>%
+  str_pad(7,"right")
+
+
+# Remove espaços em branco indesejados
+x <- c(" a ", "  b", "c   ")
+str_trim(x)
+
+# Junta várias strings em uma só. Isso ajuda a deixar o código legível, pois permite que uma string grande seja escrita em múltiplas linhas, em vez de uma única linha enorme.
+lorem_ipsum <- str_c(
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ",
+  "Etiam viverra velit a mauris porttitor aliquam. Donec gravida ",
+  "velit a felis lacinia, ac eleifend nibh sodales. Aenean in metus ",
+  "id risus scelerisque venenatis. Proin nec ante et felis ullamcorper ",
+  "consectetur ac eget felis. Nulla sit amet sapien lorem. Morbi sit amet ",
+  "auctor lacus. Ut faucibus aliquam volutpat."
+)
+
+# Imprime a string de forma mais ou menos "justificada", com no máximo 60 caracteres por linha
+cat(str_wrap(lorem_ipsum, width = 60))
+```
+
+**Operações sensíveis à localidade**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+texto <- c("i","j","k","y")
+
+# str_sort ordena um vetor de strings por ordem alfabética
+str_sort(texto) # Retorna -> ("i" "j" "k" "y"), pois em inglês (idioma padrão), essa é a sequência alfabética
+str_sort(texto,locale="lt") # Retorna ("i" "y" "j" "k"), pois no idioma letão ("lt"), a letra "y" vem entre as letras "i" e "j"
+```
+
+**Detecção de padrões**
+A maioria das funções do pacote ```stringr``` é desse tipo. Em todas elas, repetem-se os dois primeiros parâmetros recebidos: (1) um vetor de strings; (2) um padrão a ser buscado dentro desse vetor.
+
+O padrão a ser buscado pode ser definido de quatro maneiras diferentes:
+
+ * Expressões regulares (padrão)
+ * Sequência fixa de bytes (opção ```fixed()``` -> ganho em velocidade)
+ * Sequência fixa de caracteres (opção ```coll()``` -> perda em velocidade; sensível à localidade)
+ * Análise de limites (opção ```boundary()```)
+
+Diferentes tarefas podem ser executadas relacionadas à detecção de padrões. Seguem alguns exemplos:
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+emails <- c(
+  "Pedro",  # inválido
+  "pedro.rendeiro@itec.ufpa.br", # válido
+  "91 98000-0000",  # inválido
+  "meu-email@web.com",  # válido
+  "oi@gmail.com tchau@gmail.com"  # válido
+)
+
+# String que representa uma expressão regular para validar email
+regex <- "(\\w+([-\\.]?\\w+)*@([\\w-]+\\.)+[\\w-]{2,4})"
+
+# Retorna TRUE para as strings que contém emails válidos -> (FALSE, TRUE, FALSE, TRUE, TRUE)
+str_detect(emails,regex)
+
+# Retorna "pedro.rendeiro@itec.ufpa.br", "meu-email@web.com" e "oi@gmail.com tchau@gmail.com"
+str_subset(emails,regex)
+
+# Retorna o número de correspondências em cada string do vetor -> (0,1,0,1,2)
+str_count(emails,regex)
+
+# Localiza o início e o fim da primeira correspondência encontrada em cada string
+loc <- str_locate(emails,regex)
+# retorna a matriz:
+#      start end
+# [1,]    NA  NA
+# [2,]     1  27
+# [3,]    NA  NA
+# [4,]     1  17
+# [5,]     1  12
+loc
+
+# Substitui a primeira correspondência de cada string pela string passada como 3º argumento 
+str_replace(emails,regex,"novo-email@hotmail.com")
+# Retorna:
+# [1] "Pedro"                                 
+# [2] "novo-email@hotmail.com"                
+# [3] "91 98000-0000"                         
+# [4] "novo-email@hotmail.com"                
+# [5] "novo-email@hotmail.com tchau@gmail.com"
+
+
+# Extrai a primeira correspondência encontrada em cada string -> (NA, "pedro.rendeiro@itec.ufpa.br", NA, "meu-email@web.com", "oi@gmail.com")
+str_extract(emails,regex)
+
+# Extrai todas as correspondências encontradas em cada string -> (NA, "pedro.rendeiro@itec.ufpa.br", NA, "meu-email@web.com", "oi@gmail.com", "tchau@gmail.com")
+str_extract_all(emails,regex)
+
+# Obs.: em várias outras funções 'f', como str_loc(), str_match(), str_replace()... essa variação 'f_all()' funciona da mesma forma
+
+# Divide a string com base num separador especificado
+str_split("j_k_l","_") # Retorna ("j","k","l")
+str_split("jkl","") # Retorna ("j","k","l")
+str_split("red green blue", boundary("word")) # Retorna ("red","green","blue")
+```
+
+
+#### Questão proposta sobre detecção de padrões
+> No processo de cadastro de um sistema web, é necessário validar a senha que o usuário deseja cadastrar. As regras são as seguintes:
+>
+> - Mínimo de oito caracteres
+> - Caracteres alfanuméricos maiúsculos e minúsculos
+> - Ao menos um caractere especial
+> - Ao menos um caractere numérico
+>
+> Essas regras são verificadas pela expressão regular "^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)[a-zA-Z\d\W]{8,}$". Mas além disso, a senha não pode conter a palavra "password" (ou "Password", "PASSWord"...). Com base nisso, desenvolva um programa em R que leia uma lista de senhas. Se alguma delas contiver a palavra proibida, ela deve ser substituída por uma senha padrão que seja válida. Depois disso, verifique se há alguma senha válida. Se houver, conte quantas são válidas, crie uma nova lista apenas com as senhas válidas, imprima-as por inteiro e imprima-as um caractere por vez. Se não houver nenhuma senha válida, imprima uma mensagem de erro.
+
+**Programa**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+# Lista de senhas recebida
+senhas <- c(
+  "aoAEn32F3@Iup",
+  "12345678",
+  "S3nh4F0rt3!",
+  "#senhafraca",
+  "PassWord"
+)
+
+senhas <- str_replace(senhas,coll("password", ignore_case=TRUE), "Default!123")
+# senhas = ("aoAEn32F3@Iup" "12345678"      "S3nh4F0rt3!"   "#senhafraca"   "Default!123")
+
+# Expressão regular para validação das senhas
+regex <- "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*\\W)[a-zA-Z\\d\\W]{8,}$"
+
+# Se houver ao menos uma senha válida
+if(any(str_detect(senhas,regex))){
+  # Imprime o número de senhas válidas na lista
+  num_senhas_validas <- sum(str_count(senhas,regex))
+  print(num_senhas_validas)
+  
+  # Cria uma nova lista, apenas com as senhas válidas
+  senhas_validas <- str_subset(senhas,regex)  # ("aoAEn32F3@Iup" "S3nh4F0rt3!" "Default!123")
+  
+  # Laço iterativo que passa por cada senha válida
+  for (senha in senhas_validas) {
+    print(senha)  # Imprime a senha
+    caracteres <- str_split(senha,boundary("character"))  # Divide a atual 'senha' por caractere
+    # Para cada caractere
+    for (c in caracteres) {
+      print(c)  # Imprime o caractere
+    }
+  }
+  
+} else{  # Caso contrário
+    print("Erro: nenhuma senha válida")
+  }
+```
+
+**Saída**
+```
+[1] "Palavra proibida identificada"
+[1] "Nova lista de senhas:"
+[1] "aoAEn32F3@Iup" "12345678"      "S3nh4F0rt3!"   "#senhafraca"  
+[5] "Default!123" 
+
+[1] 3
+[1] "aoAEn32F3@Iup"
+ [1] "a" "o" "A" "E" "n" "3" "2" "F" "3" "@" "I" "u" "p"
+[1] "S3nh4F0rt3!"
+ [1] "S" "3" "n" "h" "4" "F" "0" "r" "t" "3" "!"
+[1] "Default!123"
+ [1] "D" "e" "f" "a" "u" "l" "t" "!" "1" "2" "3"
+```
+
+**Funções stringr utilizadas**
+```r
+str_replace()
+str_detect()
+str_count()
+str_subset()
+str_split()
+```
+
+#### Questão proposta sobre manipulação de strings
+> Utilizando os pacotes dplyr e stringr, bem como a base de dados starwars, desenvolva um programa em R que:
+>
+> - Extraia aleatoriamente e COM repetição 50 amostras de nomes de personagens e seus planetas. Garanta que o planeta é conhecido;
+> - Remova os exemplos repetidos usando o pacote stringr;
+> - Para cada amostra, construa a frase "[personagem] belongs to [planeta]" utilizando apenas o primeiro nome de cada personagem;
+> - Adicione espaços em branco à direita das frases até que todas tenham o mesmo tamanho da maior delas;
+> - Imprima as frases;
+> - Utilizando a função ```str_glue()``` e uma variável chamada ```max_length```, imprima uma frase completa que informe qual o tamanho das strings impressas no item acima.
+
+**Programa**
+```r
+# Pedro Rendeiro
+# 26/03/2023
+
+library(stringr)
+library(dplyr)
+library(dbplyr)
+
+width <- 10
+
+# Cria novo tibble
+sw_without_na_planets <- starwars %>%
+  filter(!is.na(homeworld)) %>%  # apenas com os registros cujo planeta é conhecido
+  slice_sample(n=50, replace = TRUE)  # e seleciona aleatoriamente e COM repetição 50 amostras
+
+# Converte colunas da tibble para vetores de strings
+names <- pull(sw_without_na_planets, name)
+planets <- pull(sw_without_na_planets, homeworld)
+
+my_name <- names[1]      # Extrai o primeiro nome da lista
+my_planet <- planets[1]  # Extrai o primeiro planeta da lista
+
+# Imprime string formatada com variáveis
+print(str_glue("My name is {my_name} and I come from {my_planet} planet"))
+
+# Mantém apenas o primeiro nome de cada personagem
+first_names <- word(names)
+
+# Junta as strings de mesmo índice entre os dois vetores e adiciona um texto separador entre ambas
+origens <- str_c(first_names, planets, sep=" belongs to ")
+
+# Elimina as amostras repetidas
+origens_unique <- str_unique(origens)
+
+# Calcula tamanho da maior string
+max_length <- max(str_length(origens_unique))
+
+# Adiciona espaços vazios à direita das strings até que todas tenham o mesmo tamanho da maior delas
+origens_same_size <- str_pad(origens_unique, max_length, side = "right")
+
+print(origens_same_size)
+
+print(str_glue("The length of all of the sentences is: {max_length}."))
+```
+
+**Saída**
+```
+ [1] "Ratts belongs to Aleen Minor" "Beru belongs to Tatooine    "
+ [3] "Saesee belongs to Iktotch   " "Ayla belongs to Ryloth      "
+ [5] "Poggle belongs to Geonosis  " "Taun belongs to Kamino      "
+ [7] "Palpatine belongs to Naboo  " "Luke belongs to Tatooine    "
+ [9] "Bib belongs to Ryloth       " "Ric belongs to Naboo        "
+[11] "Jabba belongs to Nal Hutta  " "Darth belongs to Tatooine   "
+[13] "Obi-Wan belongs to Stewjon  " "Lama belongs to Kamino      "
+[15] "Mas belongs to Champala     " "Han belongs to Corellia     "
+[17] "R5-D4 belongs to Tatooine   " "Owen belongs to Tatooine    "
+[19] "San belongs to Muunilinst   " "Roos belongs to Naboo       "
+[21] "Barriss belongs to Mirial   " "C-3PO belongs to Tatooine   "
+[23] "Lobot belongs to Bespin     " "Gregar belongs to Naboo     "
+[25] "Watto belongs to Toydaria   " "Bossk belongs to Trandosha  "
+[27] "Jar belongs to Naboo        " "R2-D2 belongs to Naboo      "
+[29] "Jocasta belongs to Coruscant" "Sly belongs to Umbara       "
+[31] "Greedo belongs to Rodia     " "Sebulba belongs to Malastare"
+[33] "Ben belongs to Tund         " "Adi belongs to Coruscant    "
+[35] "Ackbar belongs to Mon Cala  " "Nien belongs to Sullust     "
+[37] "Zam belongs to Zolan        " "Cordé belongs to Naboo      "
+
+The length of all of the sentences is: 28.
+```
+
